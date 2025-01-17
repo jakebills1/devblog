@@ -1,6 +1,6 @@
 +++
-date = '2025-01-10T15:19:01-07:00'
-draft = true
+date = '2025-01-16T11:50:00-07:00' 
+draft = false
 title = 'Gems'
 +++
 Like many Ruby developers, I have used Gems as long as I have been writing Ruby, but it dawned on me that I don't really have an idea of what Gems are, so this article is to explore that. 
