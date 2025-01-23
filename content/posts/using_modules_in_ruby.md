@@ -1,6 +1,6 @@
 +++
-date = '2025-01-22T09:39:08-07:00'
-draft = true
+date = '2025-01-23T09:39:08-07:00'
+draft = false
 title = 'Using Modules in Ruby'
 +++
 
