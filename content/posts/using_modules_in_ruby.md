@@ -4,20 +4,23 @@ draft = true
 title = 'Using Modules in Ruby'
 +++
 
-The idea for this post came when I was reading the source code of some Gems that I have used in the past, something I have been making a point to do while I am in between roles. I make a point of noting any methods, patterns, or paradigms I am unfamiliar with for later research. I was looking through the code for `acts_as_tenant` when I came across the `prepend` method, which I had not seen before. `prepend` is related to Modules, but I didn't find the docs for that method very intuitive, so I felt like I needed some background information first, and what follows is an exploration of what Modules are, what they do, how they are used, and where `prepend` fits in. 
+The idea for this post came when I was reading the source code of Gems that I have used in the past, something I have been making a point to do while I am in between roles. I make a point of noting any methods, patterns, or paradigms I am unfamiliar with for later research. I was looking through the code for `acts_as_tenant` when I came across the `prepend` method, which I had not seen before. `prepend` is related to Modules, but I didn't find the docs for that method very intuitive, so I felt like I needed some background information first. What follows is an exploration of what Modules are, what they do, how they are used, and where `prepend` fits in. 
 
 ## Definition
 The official documentation for Ruby defines modules as collections of methods and constants, where methods can be either:
-- instance: methods that will become available in a class that includes this module or
+- instance: methods that will become available in a class that includes or extends this module or
 - module: methods that will not be available to the including class but can be called directly through the module. 
 
 ```ruby
 module SomeModule
   def an_instance_method
-    'can be used from classes including this module'
+    'can be called on instances of classes including this module'
+  end
+  def a_class_method
+    'can be called on classes that extend this module'
   end
   def self.a_module_method
-    'can only be used in this module'
+    'can only be called on this module'
   end
 end
 
@@ -27,7 +30,14 @@ end
 
 sc = SomeClass.new
 puts sc.an_instance_method 
-# => can be used from classes including this module
+# => can be called on instances of classes including this module
+
+class SomeOtherClass
+  extend SomeModule
+end
+
+puts SomeOtherClass.a_class_method
+# => can be called on classes that extend this module
 
 begin
   puts sc.a_module_method
@@ -37,31 +47,14 @@ rescue => e
 end
 
 begin
-  puts SomeClass.a_module_method
+  puts SomeOtherClass.a_module_method
 rescue => e
   puts e 
-  # => undefined method `a_module_method' for SomeClass:Class
+  # => undefined method `a_module_method' for SomeOtherClass:Class
 end
 
 puts SomeModule.a_module_method 
 # => can only be used in this module
-```
-
-Modules can also be used to add class methods to Classes by extending the module:
-
-```ruby
-module SomeOtherModule
-  def this_method
-    'this is a class method now'
-  end
-end
-
-class SomeOtherClass
-  extend SomeOtherModule
-end
-
-puts SomeOtherClass.this_method 
-# => this is a class method now
 ```
 
 ## How modules really work
