@@ -135,6 +135,7 @@ name = "production"
 
 # Amazon Web Services S3; see https://gocloud.dev/howto/blob/#s3
 URL = "s3://jakebills.com?region=us-east-1"
+cloudFrontDistributionID = "E2YFNZ243LIG5H"
 
 # For S3-compatible endpoints, see https://gocloud.dev/howto/blob/#s3-compatible
 #URL = "s3://<Bucket Name>?endpoint=https://my.minio.instance&awssdk=v2&use_path_style=true&disable_https=false
