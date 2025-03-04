@@ -1,6 +1,6 @@
 +++
-date = '2025-02-26T15:24:19-07:00'
-draft = true
+date = '2025-02-28'
+draft = false
 title = 'Server Applications in Ruby'
 +++
 
