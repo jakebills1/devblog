@@ -121,11 +121,11 @@ url = "https://github.com/jakebills1"
 name = "linkedin"
 url = "https://www.linkedin.com/in/jakebills1/"
 
-[deployment]
+# [deployment]
 
-[[deployment.targets]]
+# [[deployment.targets]]
 # An arbitrary name for this target.
-name = "production"
+# name = "production"
 
 # URL specifies the Go Cloud Development Kit URL to deploy to. Examples:
 # URL = "<FILL ME IN>"
@@ -142,3 +142,6 @@ name = "production"
 # Microsoft Azure Blob Storage; see https://gocloud.dev/howto/blob/#azure
 #URL = "azblob://$web"
 
+[caches]
+  [caches.images]
+    dir = ':cacheDir/images'
