@@ -4,19 +4,18 @@ draft = true
 title = 'Redis in Ruby'
 +++
 
-Building on some of my research into concurrency and systems programming, I have been working through a project called 'Build Your Own Redis' in [CodeCrafters](https://codecrafters.io/)  and wanted to share my experience so far and some notes about Redis and Ruby.
-### What is Redis?
-Redis is an in-memory storage application that is used as a key-value database, meaning that clients can associate values like strings, arrays, and sets with keys. 
-### What does Redis do? 
-Redis:
-- runs on the internet
-- accepts TCP connections
-- reads commands from clients, parsing the Redis protocol
-- executes those commands, potentially persisting values
-- returns results of commands
+Building on some of my research into [concurrency and systems programming](/posts/server_applications_in_ruby), I have been working through a project called 'Build Your Own Redis' in [CodeCrafters](https://codecrafters.io/) and wanted to share my experience so far, and some notes about Redis and Ruby.
+## What is Redis?
+Redis is an in-memory storage application that is often used as a key-value database, meaning that clients can associate data structures like strings, arrays, and sets with keys for retrieval later. 
+## What does Redis do? 
+Simply put, a Redis client's transaction with a Redis server looks like:
+- accept a TCP connection from the client
+- read a command from the client, parsing the Redis protocol
+- execute the command, potentially persisting values
+- return results of the command
 
-The project I am going to present performs these basic actions but only responds to a few different [Redis commands](https://redis.io/docs/latest/commands/). I have yet to get to some other features of Redis like replication. Below I will get into how my project achieves each of these basic functions.
-### Network
+The project I am going to present performs these basic actions but only responds to a few different [Redis commands](https://redis.io/docs/latest/commands/). I have yet to get to some other features of Redis like replication. In the rest of this article, I will explain how my project achieves each of these basic functions.
+## Network
 This part is pretty simple, just using the Ruby sockets library to start a TCPServer on a configurable port:
 ```ruby
 require 'sockets'
@@ -31,14 +30,15 @@ module Redis
   end
 end
 ```
-### Concurrency model
-I presented a few ways concurrency can be done in Ruby in my last blog post, and I chose to implement an event loop for this project for a few reasons:
+## Concurrency model
+Like most server programs, it's necessary for a Redis server to be concurrent so new clients can still connect while existing clients are served.
+I presented a few ways concurrency can be done in Ruby in my [last blog post](posts/server_applications_in_ruby), and I chose to implement an event loop for this project for a few reasons:
 - I was interested in it
 - Redis' actual implementation uses an event loop
 
-Specifically, I chose to use [nio4r](https://github.com/socketry/nio4r) and the [Reactor design pattern](https://en.wikipedia.org/wiki/Reactor_pattern) to do so
-- nio4r: this is an IO library for Ruby that provides a selector API, allowing applications to monitor I/O objects for readiness
-- Reactor: this is a design pattern that involves defining callbacks in relation to an IO object being ready to read from or write to
+Specifically, I chose to use [nio4r](https://github.com/socketry/nio4r) and the [Reactor design pattern](https://en.wikipedia.org/wiki/Reactor_pattern) to do so.
+- nio4r: an IO library for Ruby that provides a selector API, allowing applications to monitor IO objects for readiness
+- Reactor: A design pattern centered around an event loop, in which events like a client connecting or data being ready to read are handled by callbacks
 
 This is what the concurrency implementation looks like:
 
@@ -53,7 +53,9 @@ module Redis
     end
 
     def start
+      # registering the server IO object for reading
       monitor = @selector.register(server, :r)
+      # when it's ready to read, it means a client has connected
       monitor.value = proc { accept_new_client }
       loop do
         @selector.select do |monitor|
@@ -87,36 +89,35 @@ module Redis
   end
 end
 ```
-
+`proc`s are how code can be passed around in Ruby, and are used as the callbacks handling IO events in the Server class. Since `proc`s are closures, the `monitor` object returned from registering the new client with the selector is stored in the arguments to `read_command` and `respond`.
 The flow of a request-response cycle looks something like this:
-1. Registering the actual TCPServer IO object with the selector means we will get notified when that is ready to read from, which means a client has arrived
-	1. The callback registered for that event is `accept_new_client`, which accepts a new client, producing another IO object, and that new client is stored in the callback function `read_command`
-	2. When the client connection is ready to read from, meaning a command is being sent, triggers the callback associated with that connection's IO object. When it is fully read, the interest is changed from reading to writing and the callback value is changed to `respond`.
-	3. The connection being ready to read from triggers it to be selected in the main loop, so the `respond` method is called, and the interest is switched back to reading. 
+1. The callback registered for the event that the TCPServer's IO object is ready to read from is `accept_new_client`, which accepts a new client, producing another IO object, and that new client is stored in the callback function `read_command`
+2. When the client connection is ready to read from, meaning a command is being sent, the callback associated with that connection's IO object will run in the `#start` loop. When it is fully read, the interest is changed from reading to writing and the callback value is changed to `respond`.
+3. When the client connection is ready to write to, the `respond` method is called, a response is written back to the client, and the interest is switched back to reading. 
 
 You will see the IO methods in more detail coming up
-### IO
-Since I chose to use an event loop, I have to use non-blocking IO. A quick aside on that:
-#### Blocking I/O
+## IO
+Since this implementation is single-threaded, it is important not to block that thread with IO, so non-blocking IO methods are used. 
+### Blocking IO
 Think of the first couple ruby scripts you ever wrote. One of them probably involved getting **input** from the 'user' using `gets`, and printing some result, like so:
 ```ruby
 name = gets.strip
 puts "Hello, #{name}"
 ```
 `puts` and `gets` are both blocking, meaning that the execution of your script will be suspended by the OS until data from the user is ready to be read into `name`, and/or written to the terminal.
-#### Non-blocking I/O
-Non-blocking I/O involves handled an error when the IO object is not yet ready. The non-blocking version of that script looks like:
+### Non-blocking IO
+In Ruby, non-blocking IO methods raise an error when the IO object is not yet ready. The non-blocking version of that script looks like:
 ```ruby
 begin
-  name = @stdin.read_nonblock(100)
-  @stdout.write_nonblock(name)
+  name = $stdin.read_nonblock(100)
+  $stdout.write_nonblock("Hello, #{name}")
 rescue IO::WaitReadable
   retry
 rescue IO::WaitWritable
 end
 ```
 The `read_nonblock` and `write_nonblock` methods available on IO objects like `$stdout` will raise an error that communicates back to the application that that IO object is not ready.
-#### The Redis protocol
+### The Redis protocol
 Reading a command for the Redis server to execute requires understanding how Redis clients will send that command. Using a pre-existing Redis client to interact with my server implementation looks like this: 
 ```shell-session
 $ redis-cli SET foo bar
@@ -124,13 +125,14 @@ $ redis-cli SET foo bar
 $ redis-cli GET foo
   "bar"
 ```
-The raw command my server will receive first looks like `*3\r\n$3SET\r\n$3foo\r\n$3bar\r\n`, which the Redis spec calls an array of bulk strings. Here are the different parts of that:
+The raw command my server will receive first looks like `*3\r\n$3SET\r\n$3foo\r\n$3bar\r\n`, which the Redis protocol spec calls an array of bulk strings. Here are the different parts explained:
 - `*3`: This indicates the array will consist of 3 bulk strings
 - `\r\n`: This is a line feed character, used to separate the different parts
 - `$3`: This is the first part of a bulk string, and 3 refers to the bytes the following string value will consist of
 - `SET`: This is a Redis command, and is three bytes long since 1 ASCII character is 1 byte
 - `foo`: This is the key argument to `SET`, also serialized as a 3 byte bulk string
 - `bar`: This is the value argument to `SET`, which also happens to be a 3 byte bulk string
+
 The Redis protocol indicates the response to `SET` should be the string value `OK` serialized as a Redis Simple String, which looks like: `+OK\r\n`
 The response to the `GET` command is serialized as a bulk string, which will look like this to the Redis client: `$3\r\nbar\r\n`
 
@@ -156,9 +158,6 @@ module Redis
     def read_token
       buf = ""
       io.read_nonblock(4, buf)
-      if buf.length > 4
-        raise 'short read'
-      end
       buf.delete("\r\n")
     end
 
@@ -176,8 +175,6 @@ module Redis
   end
 
   class Command
-    IMPLEMENTED_TYPES = ['PING', 'ECHO', 'SET', 'GET'].freeze
-    IMPLEMENTED_OPTIONS = ['px']
     attr_accessor :length,
                   :type,
                   :key,
@@ -198,11 +195,7 @@ module Redis
       until state.complete?
         case state.current
         when :read_length
-          command_length = reader.read_token.delete("*").to_i
-          if command_length < 1
-            raise BadReadError
-          end
-          command.length = command_length
+          command.length = reader.read_token.delete("*").to_i
         when :read_type
           command.type = reader.read_bulk_string
         when :read_key
@@ -222,13 +215,32 @@ module Redis
       command
     end
   end
+
+  class Server
+    # ...
+    def accept_new_client
+      client = server.accept
+      monitor = selector.register(client, :r)
+      monitor.value = proc do 
+        read_command(
+          monitor,
+          CommandBuilder.new(Reader.new(monitor.io))
+        )
+      end
+    end
+
+    def read_command(monitor, command_builder)
+      command = command_builder.build
+      # ...
+    end
+  end
 end
 ```
 
-### Executing a Command
+## Executing a Command
 I'm not going to go too in depth in this section, since the most complicated thing my implementation does right now is saving a value to a hash for the SET command.
 
-### Returning a Result to the client
+## Returning a Result to the client
 Finally, my Redis implementation can return a result matching the Redis spec to the client based on which command it executed. 
 ```ruby
 module Redis
@@ -276,5 +288,7 @@ module Redis
 end
 ```
 
-### Next Steps
-My full implementation is located [here](https://github.com/jakebills1/codecrafters-redis-ruby) and I am looking forward to expanding it to capture more of the full functionality that Redis has.
+## What I've Learned
+Though I set out on this project to learn more about concurrency, I think I learned the most about IO. Using non-blocking IO added the additional requirement of needing to save the progress of reading the command if an IO error is raised before the entire command is read. Using a state machine to track that progress feels like a pretty elegant solution, though it took some iteration to get there. Another complication was that reading an entire command required reading multiple lines and parsing their contents, but I feel like a lot of IO examples I've seen previously were limited to reading from a stream line by line.  
+
+My full implementation is located [here](https://github.com/jakebills1/codecrafters-redis-ruby) and I am looking forward to expanding it to capture more of the full functionality of Redis.
