@@ -1,6 +1,6 @@
 +++
-date = '2025-03-20T10:50:03-06:00'
-draft = true
+date = '2025-03-21'
+draft = false
 title = 'Redis in Ruby'
 +++
 
@@ -291,4 +291,4 @@ end
 ## What I've Learned
 Though I set out on this project to learn more about concurrency, I think I learned the most about IO. Using non-blocking IO added the additional requirement of needing to save the progress of reading the command if an IO error is raised before the entire command is read. Using a state machine to track that progress feels like a pretty elegant solution, though it took some iteration to get there. Another complication was that reading an entire command required reading multiple lines and parsing their contents, but I feel like a lot of IO examples I've seen previously were limited to reading from a stream line by line.  
 
-My full implementation is located [here](https://github.com/jakebills1/codecrafters-redis-ruby) and I am looking forward to expanding it to capture more of the full functionality of Redis.
+My full implementation is located [here](https://github.com/jakebills1/codecrafters-redis-ruby) and I am looking forward to expanding it to capture more of the full functionality of Redis. Thanks for reading!
