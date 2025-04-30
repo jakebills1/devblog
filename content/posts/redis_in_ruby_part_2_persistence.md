@@ -1,6 +1,6 @@
 +++
-date = '2025-04-30T10:11:51-06:00'
-draft = true
+date = '2025-04-30'
+draft = false
 title = 'Redis in Ruby Part 2: Persistence'
 +++
 
