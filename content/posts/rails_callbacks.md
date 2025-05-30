@@ -1,6 +1,6 @@
 +++
-date = '2025-05-30T16:33:52-06:00'
-draft = true
+date = '2025-05-30'
+draft = false
 title = 'Rails Callbacks'
 +++
 
