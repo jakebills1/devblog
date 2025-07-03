@@ -1,6 +1,6 @@
 +++
-date = '2025-07-03T15:36:44-06:00'
-draft = true
+date = '2025-07-03'
+draft = false
 title = 'Blocks, procs, and lambdas in Ruby'
 +++
 ## Block Behavior:
