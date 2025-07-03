@@ -66,6 +66,11 @@ theme = "hugo-blog-awesome"
     name = 'Posts'
     url = '/posts/'
     weight = 20
+   [[Languages.en-us.menu.main]]
+    pageRef="notes"
+    name = 'Notes'
+    url = '/notes/'
+    weight = 25
   [[Languages.en-us.menu.main]]
     pageRef="about"
     name = 'About'
